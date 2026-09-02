@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Resource Allocation &amp; Optimization System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:            #0E1420;
+    --panel:         #141B2A;
+    --panel-2:       #101725;
+    --line:          #253046;
+    --line-soft:     #1B2334;
+    --text:          #E7ECF6;
+    --muted:         #8B96AC;
+    --dp:            #4C8BF5;   /* Dynamic Programming accent */
+    --dp-dim:        #2A3E63;
+    --greedy:        #F0A93E;   /* Greedy accent */
+    --greedy-dim:    #5A461F;
+    --good:          #34D399;
+    --bad:           #F0625F;
+    --serif: 'Spectral', Georgia, serif;
+    --sans: 'IBM Plex Sans', -apple-system, sans-serif;
+    --mono: 'IBM Plex Mono', SFMono-Regular, monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans); line-height:1.5; font-size:15px;
+  }
+  h1,h2,h3{font-family:var(--serif); font-weight:600; margin:0;}
+  p{color:var(--muted); margin:.4em 0 0;}
+  a{color:inherit;}
+  ::selection{background:var(--dp-dim);}
+ 
+  /* ---------- Top nav ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:50;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 28px; background:rgba(14,20,32,.92); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .brand{font-family:var(--serif); font-size:17px; font-weight:600; letter-spacing:.2px;}
+  .brand span{color:var(--muted); font-family:var(--mono); font-size:12px; margin-left:8px;}
+  nav.tabs{display:flex; gap:4px;}
+  nav.tabs button{
+    background:none; border:1px solid transparent; color:var(--muted);
+    font-family:var(--sans); font-size:13.5px; padding:8px 14px; border-radius:7px;
+    cursor:pointer; transition:color .15s, border-color .15s;
+  }
+  nav.tabs button:hover{color:var(--text);}
+  nav.tabs button.active{color:var(--text); border-color:var(--line);}
+ 
+  /* ---------- Hero ---------- */
+  .hero{
+    padding:64px 28px 48px; max-width:1120px; margin:0 auto;
+    display:grid; grid-template-columns:1.1fr 1fr; gap:48px; align-items:center;
+  }
+  .hero h1{font-size:40px; line-height:1.12; max-width:520px;}
+  .hero .lede{font-size:16px; max-width:460px; margin-top:14px;}
+  .hero .meta{
+    display:flex; gap:22px; margin-top:28px; font-family:var(--mono); font-size:12px; color:var(--muted);
+  }
+  .hero .meta b{display:block; color:var(--text); font-size:15px; font-family:var(--sans); font-weight:600;}
+  .flow{width:100%; height:auto;}
+ 
+  /* ---------- Sections ---------- */
+  section.panel-wrap{max-width:1120px; margin:0 auto; padding:10px 28px 80px;}
+  .section-head{display:flex; align-items:baseline; gap:12px; margin-bottom:22px; padding-top:46px; border-top:1px solid var(--line-soft);}
+  .section-head h2{font-size:24px;}
+  .section-head .tag{font-family:var(--mono); font-size:11px; padding:3px 8px; border-radius:5px;}
+  .tag.dp{color:var(--dp); border:1px solid var(--dp-dim); background:rgba(76,139,245,.07);}
+  .tag.greedy{color:var(--greedy); border:1px solid var(--greedy-dim); background:rgba(240,169,62,.08);}
+  .section-head p{margin-left:auto; text-align:right; max-width:340px; font-size:13px;}
+ 
+  .grid2{display:grid; grid-template-columns:380px 1fr; gap:22px; align-items:start;}
+  @media(max-width:880px){.grid2{grid-template-columns:1fr;} .hero{grid-template-columns:1fr;}}
+ 
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:20px;
+  }
+  .panel.dp-border{border-color:var(--dp-dim);}
+  .panel.greedy-border{border-color:var(--greedy-dim);}
+  .panel h3{font-size:14px; font-family:var(--sans); font-weight:600; color:var(--muted); text-transform:none; margin-bottom:14px;}
+ 
+  label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:5px;}
+  input[type=text],input[type=number]{
+    width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    border-radius:6px; padding:8px 10px; font-family:var(--mono); font-size:13px; margin-bottom:10px;
+  }
+  input:focus{outline:none; border-color:var(--dp);}
+  .row{display:grid; grid-template-columns:1fr; gap:0;}
+  .item-row{
+    display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:6px; align-items:center; margin-bottom:6px;
+  }
+  .item-row input{margin-bottom:0;}
+  .item-row button{
+    background:none; border:1px solid var(--line); color:var(--muted); border-radius:6px; width:30px; height:32px;
+    cursor:pointer; font-size:14px;
+  }
+  .item-row button:hover{color:var(--bad); border-color:var(--bad);}
+  .col-labels{display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:6px; font-size:10.5px; color:var(--muted); margin-bottom:6px; font-family:var(--mono);}
+ 
+  .btn{
+    font-family:var(--sans); font-weight:600; font-size:13.5px; border-radius:7px; padding:10px 16px;
+    border:1px solid var(--line); background:var(--panel-2); color:var(--text); cursor:pointer;
+    transition:transform .08s;
+  }
+  .btn:active{transform:scale(.98);}
+  .btn.primary.dp{background:var(--dp); border-color:var(--dp); color:#08101F;}
+  .btn.primary.greedy{background:var(--greedy); border-color:var(--greedy); color:#241804;}
+  .btn.ghost{background:none;}
+  .btn-row{display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;}
+ 
+  .stat-strip{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:18px;}
+  .stat{background:var(--panel-2); border:1px solid var(--line-soft); border-radius:8px; padding:12px 14px;}
+  .stat .k{font-family:var(--mono); font-size:11px; color:var(--muted);}
+  .stat .v{font-family:var(--serif); font-size:22px; margin-top:4px;}
+  .stat .v.dp{color:var(--dp);}
+  .stat .v.greedy{color:var(--greedy);}
+ 
+  table.dp-table{border-collapse:collapse; font-family:var(--mono); font-size:11.5px; width:max-content;}
+  table.dp-table th,table.dp-table td{
+    border:1px solid var(--line-soft); padding:4px 7px; text-align:center; min-width:26px;
+  }
+  table.dp-table th{color:var(--muted); font-weight:500; background:var(--panel-2);}
+  table.dp-table td.hit{background:rgba(76,139,245,.18); color:var(--dp); font-weight:600;}
+  .table-scroll{overflow:auto; max-height:340px; border:1px solid var(--line-soft); border-radius:8px; padding:10px;}
+ 
+  .chip-list{display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;}
+  .chip{
+    font-family:var(--mono); font-size:12px; padding:6px 10px; border-radius:6px;
+    background:rgba(76,139,245,.1); border:1px solid var(--dp-dim); color:var(--dp);
+  }
+  .chip.greedy{background:rgba(240,169,62,.1); border-color:var(--greedy-dim); color:var(--greedy);}
+ 
+  .bar-track{height:10px; border-radius:6px; background:var(--panel-2); overflow:hidden; margin-top:8px; border:1px solid var(--line-soft);}
+  .bar-fill{height:100%; background:linear-gradient(90deg,var(--dp),#79ABFB);}
+ 
+  .timeline{display:flex; gap:4px; margin-top:10px; overflow-x:auto; padding-bottom:6px;}
+  .slot{
+    min-width:96px; border:1px solid var(--line-soft); border-radius:8px; padding:10px; background:var(--panel-2);
+  }
+  .slot .t{font-family:var(--mono); font-size:10px; color:var(--muted);}
+  .slot .n{font-family:var(--sans); font-weight:600; font-size:13px; margin-top:4px;}
+  .slot.empty{opacity:.35;}
+  .slot.filled{border-color:var(--greedy-dim); background:rgba(240,169,62,.06);}
+ 
+  .complexity-box{
+    margin-top:16px; padding:14px; border-radius:8px; background:var(--panel-2); border:1px solid var(--line-soft);
+    font-family:var(--mono); font-size:12px; color:var(--muted); display:flex; gap:26px; flex-wrap:wrap;
+  }
+  .complexity-box b{color:var(--text); font-family:var(--sans);}
+ 
+  pre.pseudo{
+    font-family:var(--mono); font-size:12.5px; color:var(--text); background:var(--panel-2);
+    border:1px solid var(--line-soft); border-radius:8px; padding:16px 18px; overflow:auto; line-height:1.7;
+    white-space:pre;
+  }
+ 
+  .lab-controls{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px;}
+  .lab-results table{width:100%; border-collapse:collapse; font-size:13px; margin-top:10px;}
+  .lab-results th,.lab-results td{padding:9px 10px; border-bottom:1px solid var(--line-soft); text-align:left;}
+  .lab-results th{color:var(--muted); font-weight:500; font-family:var(--mono); font-size:11px;}
+  .lab-results td.num{font-family:var(--mono);}
+  canvas{max-width:100%;}
+ 
+  .counter-example{margin-top:26px;}
+  .verdict{
+    margin-top:10px; padding:12px 14px; border-radius:8px; font-size:13.5px;
+    background:rgba(240,98,95,.08); border:1px solid rgba(240,98,95,.4); color:#F5B4B2;
+  }
+  .verdict b{color:var(--bad);}
+ 
+  footer{
+    max-width:1120px; margin:0 auto; padding:30px 28px 70px; border-top:1px solid var(--line-soft);
+    color:var(--muted); font-size:12.5px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  }
+  .deliverables{display:flex; gap:16px; flex-wrap:wrap;}
+  .deliverables span{display:flex; align-items:center; gap:6px;}
+  .dot{width:6px; height:6px; border-radius:50%; background:var(--good);}
+ 
+  .hint{font-size:12px; color:var(--muted); margin-top:8px;}
+  @media(max-width:600px){
+    .hero{padding-top:36px;} .hero h1{font-size:30px;}
+    .stat-strip{grid-template-columns:1fr 1fr;}
+    nav.tabs{display:none;}
+  }
+</style>
+</head>
+<body>
+ 
+<div class="topbar">
+  <div class="brand">Smart Resource Allocation &amp; Optimization System <span>CSA0613 · DAA</span></div>
+  <nav class="tabs">
+    <button data-target="#allocation" class="active">Resource Allocation</button>
+    <button data-target="#scheduling">Job Scheduling</button>
+    <button data-target="#lab">Performance Lab</button>
+  </nav>
+</div>
+ 
+<!-- ================= HERO ================= -->
+<div class="hero">
+  <div>
+    <h1>Two ways to spend what's scarce, put side by side.</h1>
+    <p class="lede">Projects compete for a fixed budget. Jobs compete for a fixed calendar. This system solves both: an exact 0/1 Knapsack built by Dynamic Programming for resource allocation, and a Greedy strategy for scheduling jobs against deadlines — then it measures where each one wins.</p>
+    <div class="meta">
+      <div><b>0/1 Knapsack</b>Dynamic Programming</div>
+      <div><b>Job Sequencing</b>Greedy Strategy</div>
+      <div><b>O(n·W)</b>vs<br>O(n log n)</div>
+    </div>
+  </div>
+  <svg class="flow" viewBox="0 0 460 260" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M0 0L10 5L0 10z" fill="#4A5674"/>
+      </marker>
+    </defs>
+    <text x="10" y="24" fill="#8B96AC" font-family="IBM Plex Mono" font-size="11">projects · budget</text>
+    <rect x="10" y="34" width="140" height="46" rx="6" fill="none" stroke="#2A3E63"/>
+    <text x="80" y="62" fill="#E7ECF6" font-family="IBM Plex Sans" font-size="12" text-anchor="middle">Resource pool</text>
+    <line x1="150" y1="57" x2="196" y2="57" stroke="#4A5674" stroke-width="1.4" marker-end="url(#arrow)"/>
+    <rect x="200" y="34" width="150" height="46" rx="6" fill="rgba(76,139,245,.1)" stroke="#4C8BF5"/>
+    <text x="275" y="55" fill="#4C8BF5" font-family="IBM Plex Sans" font-weight="600" font-size="12" text-anchor="middle">0/1 Knapsack</text>
+    <text x="275" y="69" fill="#8B96AC" font-family="IBM Plex Mono" font-size="9.5" text-anchor="middle">dynamic programming</text>
+ 
+    <text x="10" y="134" fill="#8B96AC" font-family="IBM Plex Mono" font-size="11">jobs · deadlines</text>
+    <rect x="10" y="144" width="140" height="46" rx="6" fill="none" stroke="#5A461F"/>
+    <text x="80" y="172" fill="#E7ECF6" font-family="IBM Plex Sans" font-size="12" text-anchor="middle">Task calendar</text>
+    <line x1="150" y1="167" x2="196" y2="167" stroke="#4A5674" stroke-width="1.4" marker-end="url(#arrow)"/>
+    <rect x="200" y="144" width="150" height="46" rx="6" fill="rgba(240,169,62,.09)" stroke="#F0A93E"/>
+    <text x="275" y="165" fill="#F0A93E" font-family="IBM Plex Sans" font-weight="600" font-size="12" text-anchor="middle">Job Sequencing</text>
+    <text x="275" y="179" fill="#8B96AC" font-family="IBM Plex Mono" font-size="9.5" text-anchor="middle">greedy strategy</text>
+ 
+    <line x1="350" y1="57" x2="392" y2="112" stroke="#4A5674" stroke-width="1.4" marker-end="url(#arrow)"/>
+    <line x1="350" y1="167" x2="392" y2="120" stroke="#4A5674" stroke-width="1.4" marker-end="url(#arrow)"/>
+    <rect x="330" y="200" width="120" height="46" rx="6" fill="rgba(52,211,153,.08)" stroke="#34D399"/>
+    <text x="390" y="222" fill="#34D399" font-family="IBM Plex Sans" font-weight="600" font-size="12" text-anchor="middle">Optimized</text>
+    <text x="390" y="236" fill="#8B96AC" font-family="IBM Plex Mono" font-size="9.5" text-anchor="middle">allocation plan</text>
+    <line x1="325" y1="80" x2="360" y2="200" stroke="#2A3E63" stroke-width="1.2" stroke-dasharray="2 3"/>
+    <line x1="325" y1="190" x2="380" y2="200" stroke="#5A461F" stroke-width="1.2" stroke-dasharray="2 3"/>
+  </svg>
+</div>
+ 
+<!-- ================= SECTION 1: KNAPSACK ================= -->
+<section class="panel-wrap" id="allocation">
+  <div class="section-head">
+    <span class="tag dp">DYNAMIC PROGRAMMING</span>
+    <h2>Project resource allocation</h2>
+    <p>Select the subset of projects that fits the budget and maximizes total profit — solved exactly with a 0/1 Knapsack DP table.</p>
+  </div>
+ 
+  <div class="grid2">
+    <div class="panel dp-border">
+      <h3>Inputs</h3>
+      <label for="capacity">Total available resource capacity</label>
+      <input type="number" id="capacity" value="15" min="1">
+ 
+      <div class="col-labels"><span>ID</span><span>Project</span><span>Resource</span><span>Profit</span><span></span></div>
+      <div id="projectRows"></div>
+      <div class="btn-row">
+        <button class="btn ghost" id="addProject">+ Add project</button>
+        <button class="btn ghost" id="sampleProjects">Load sample data</button>
+      </div>
+ 
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn primary dp" id="runKnapsack">Run Knapsack DP</button>
+      </div>
+      <p class="hint">DP table renders for up to 12 projects / capacity ≤ 60, for readability. Larger sets still compute — table view is skipped.</p>
+    </div>
+ 
+    <div class="panel">
+      <h3>Results</h3>
+      <div class="stat-strip">
+        <div class="stat"><div class="k">MAX PROFIT</div><div class="v dp" id="knMaxProfit">—</div></div>
+        <div class="stat"><div class="k">PROJECTS SELECTED</div><div class="v" id="knCount">—</div></div>
+        <div class="stat"><div class="k">EXEC TIME</div><div class="v" id="knTime">—</div></div>
+        <div class="stat"><div class="k">RESOURCE USED</div><div class="v" id="knUsed">—</div></div>
+      </div>
+ 
+      <div><b style="font-size:12.5px;color:var(--muted);">SELECTED PROJECTS</b>
+        <div class="chip-list" id="knChips"></div>
+      </div>
+ 
+      <div class="bar-track"><div class="bar-fill" id="knBar" style="width:0%"></div></div>
+      <p class="hint" id="knUtilText">Resource utilization —</p>
+ 
+      <div style="margin-top:18px;">
+        <b style="font-size:12.5px;color:var(--muted);">DP TABLE</b>
+        <div class="table-scroll" id="knTableWrap" style="margin-top:8px;"><span class="hint">Run the algorithm to build the table.</span></div>
+      </div>
+ 
+      <div class="complexity-box">
+        <div><b>Time complexity</b><br>O(n × W)</div>
+        <div><b>Space complexity</b><br>O(n × W) — reducible to O(W)</div>
+        <div><b>n, W here</b><br><span id="knNW">—</span></div>
+      </div>
+    </div>
+  </div>
+ 
+  <div style="margin-top:24px;">
+    <b style="font-size:12.5px;color:var(--muted);">PSEUDOCODE — 0/1 KNAPSACK (DP)</b>
+    <pre class="pseudo">function knapsackDP(items[1..n], capacity W):
+    let dp[0..n][0..W] = 0
+ 
+    for i = 1 to n:
+        for w = 0 to W:
+            if items[i].weight <= w:
+                dp[i][w] = max( dp[i-1][w],
+                                 dp[i-1][w - items[i].weight] + items[i].profit )
+            else:
+                dp[i][w] = dp[i-1][w]
+ 
+    // backtrack to find the selected items
+    selected = [], w = W
+    for i = n downto 1:
+        if dp[i][w] != dp[i-1][w]:
+            selected.add(items[i]); w -= items[i].weight
+ 
+    return dp[n][W], selected, dp   // maxProfit, chosen projects, full table</pre>
+  </div>
+</section>
+ 
+<!-- ================= SECTION 2: JOB SEQUENCING ================= -->
+<section class="panel-wrap" id="scheduling">
+  <div class="section-head">
+    <span class="tag greedy">GREEDY STRATEGY</span>
+    <h2>Job sequencing with deadlines</h2>
+    <p>Fill the latest free slot before each job's deadline, taking jobs in decreasing order of profit.</p>
+  </div>
+ 
+  <div class="grid2">
+    <div class="panel greedy-border">
+      <h3>Inputs</h3>
+      <div class="col-labels"><span>ID</span><span>Job</span><span>Deadline</span><span>Profit</span><span></span></div>
+      <div id="jobRows"></div>
+      <div class="btn-row">
+        <button class="btn ghost" id="addJob">+ Add job</button>
+        <button class="btn ghost" id="sampleJobs">Load sample data</button>
+      </div>
+ 
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn primary greedy" id="runGreedy">Run Job Sequencing</button>
+      </div>
+      <p class="hint">Time slots are unit-length and numbered 1…max deadline.</p>
+    </div>
+ 
+    <div class="panel">
+      <h3>Results</h3>
+      <div class="stat-strip">
+        <div class="stat"><div class="k">MAX PROFIT</div><div class="v greedy" id="grMaxProfit">—</div></div>
+        <div class="stat"><div class="k">JOBS SCHEDULED</div><div class="v" id="grCount">—</div></div>
+        <div class="stat"><div class="k">EXEC TIME</div><div class="v" id="grTime">—</div></div>
+        <div class="stat"><div class="k">SLOTS FILLED</div><div class="v" id="grSlots">—</div></div>
+      </div>
+ 
+      <div><b style="font-size:12.5px;color:var(--muted);">SCHEDULE TIMELINE</b>
+        <div class="timeline" id="grTimeline"><span class="hint">Run the algorithm to build the schedule.</span></div>
+      </div>
+ 
+      <div><b style="font-size:12.5px;color:var(--muted);display:block;margin-top:16px;">SELECTED SEQUENCE (BY SLOT)</b>
+        <div class="chip-list greedy" id="grChips"></div>
+      </div>
+ 
+      <div class="complexity-box">
+        <div><b>Time complexity</b><br>O(n × d) array-slot version</div>
+        <div><b>Optimized</b><br>O(n log n) with a disjoint-set slot allocator</div>
+        <div><b>n, d here</b><br><span id="grND">—</span></div>
+      </div>
+    </div>
+  </div>
+ 
+  <div style="margin-top:24px;">
+    <b style="font-size:12.5px;color:var(--muted);">PSEUDOCODE — JOB SEQUENCING (GREEDY)</b>
+    <pre class="pseudo">function jobSequencing(jobs[1..n]):
+    sort jobs by profit descending
+    d = max(job.deadline for job in jobs)
+    slot[1..d] = empty
+ 
+    for job in jobs:                       // in profit order
+        for t = min(d, job.deadline) downto 1:
+            if slot[t] is empty:
+                slot[t] = job
+                break                       // job placed, move to next job
+ 
+    selected = [ slot[t] for t where slot[t] != empty ]
+    totalProfit = sum(job.profit for job in selected)
+    return selected, totalProfit</pre>
+  </div>
+</section>
+ 
+<!-- ================= SECTION 3: PERFORMANCE LAB ================= -->
+<section class="panel-wrap" id="lab">
+  <div class="section-head">
+    <span class="tag dp" style="border-color:var(--line);color:var(--muted);background:none;">DP vs GREEDY</span>
+    <h2>Performance lab</h2>
+    <p>Generate small, medium and large datasets and compare the exact DP solution against a greedy (profit/weight ratio) heuristic on the same Knapsack instances.</p>
+  </div>
+ 
+  <div class="panel">
+    <div class="lab-controls">
+      <button class="btn primary dp" id="runLab">Run small / medium / large</button>
+      <span class="hint" style="align-self:center;">Sizes: 10, 50, 200 projects · capacity scaled to each set</span>
+    </div>
+    <canvas id="labChart" height="90"></canvas>
+    <div class="lab-results">
+      <table id="labTable">
+        <thead>
+          <tr><th>Dataset</th><th>n</th><th>W</th><th>DP time</th><th>DP profit</th><th>Greedy time</th><th>Greedy profit</th><th>Optimality</th></tr>
+        </thead>
+        <tbody><tr><td colspan="8" class="hint" style="padding:14px 10px;">Run the lab to populate this table.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+ 
+  <div class="panel counter-example">
+    <h3>Counterexample: greedy is not always optimal for 0/1 Knapsack</h3>
+    <p style="margin-top:2px;">A fixed instance where the ratio-greedy heuristic picks a worse combination than the DP-exact solution — demonstrating why 0/1 Knapsack needs Dynamic Programming, not Greedy, for guaranteed optimality.</p>
+    <div class="btn-row"><button class="btn ghost" id="runCounter">Show counterexample</button></div>
+    <div id="counterOut"></div>
+  </div>
+</section>
+ 
+<footer>
+  <div class="deliverables">
+    <span><span class="dot"></span>Pseudocode included above</span>
+    <span><span class="dot"></span>Implementation &amp; results — this system</span>
+    <span><span class="dot" style="background:var(--muted);"></span>GitHub upload — pending (yours to push)</span>
+  </div>
+  <div>CSA0613 · Design and Analysis of Algorithms · Smart Resource Allocation and Optimization System</div>
+</footer>
+ 
+<script>
+/* =================== STATE HELPERS =================== */
+function rowHTML(container, kind, idx, vals){
+  const isProj = kind==='project';
+  const div = document.createElement('div');
+  div.className='item-row';
+  div.dataset.idx=idx;
+  div.innerHTML = isProj
+    ? `<input type="text" class="f-id" value="${vals[0]}">
+       <input type="text" class="f-name" value="${vals[1]}">
+       <input type="number" class="f-a" value="${vals[2]}" min="1">
+       <input type="number" class="f-b" value="${vals[3]}" min="0">
+       <button class="del">×</button>`
+    : `<input type="text" class="f-id" value="${vals[0]}">
+       <input type="text" class="f-name" value="${vals[1]}">
+       <input type="number" class="f-a" value="${vals[2]}" min="1">
+       <input type="number" class="f-b" value="${vals[3]}" min="0">
+       <button class="del">×</button>`;
+  div.querySelector('.del').onclick=()=>div.remove();
+  container.appendChild(div);
+}
+ 
+function readRows(container){
+  return [...container.querySelectorAll('.item-row')].map(r=>({
+    id: r.querySelector('.f-id').value.trim(),
+    name: r.querySelector('.f-name').value.trim(),
+    a: Number(r.querySelector('.f-a').value),
+    b: Number(r.querySelector('.f-b').value),
+  }));
+}
+ 
+const projectRows = document.getElementById('projectRows');
+const jobRows = document.getElementById('jobRows');
+ 
+function loadSampleProjects(){
+  projectRows.innerHTML='';
+  const sample=[
+    ['P1','CRM Revamp',4,7],['P2','Data Pipeline',6,9],['P3','Mobile App',3,5],
+    ['P4','ML Model',5,8],['P5','Cloud Migration',7,10],['P6','Security Audit',2,4],
+  ];
+  sample.forEach((s,i)=>rowHTML(projectRows,'project',i,s));
+}
+function loadSampleJobs(){
+  jobRows.innerHTML='';
+  const sample=[
+    ['J1','Client Report',2,60],['J2','Bug Fix',1,100],['J3','Server Patch',2,20],
+    ['J4','UI Polish',1,40],['J5','Data Backup',3,20],['J6','Launch Prep',3,50],
+  ];
+  sample.forEach((s,i)=>rowHTML(jobRows,'job',i,s));
+}
+document.getElementById('addProject').onclick=()=>rowHTML(projectRows,'project',projectRows.children.length,['P'+(projectRows.children.length+1),'New project',1,1]);
+document.getElementById('addJob').onclick=()=>rowHTML(jobRows,'job',jobRows.children.length,['J'+(jobRows.children.length+1),'New job',1,1]);
+document.getElementById('sampleProjects').onclick=loadSampleProjects;
+document.getElementById('sampleJobs').onclick=loadSampleJobs;
+loadSampleProjects(); loadSampleJobs();
+ 
+/* =================== ALGORITHMS =================== */
+function knapsackDP(items, W){
+  const n=items.length;
+  const dp=Array.from({length:n+1},()=>new Array(W+1).fill(0));
+  for(let i=1;i<=n;i++){
+    const {a:weight,b:profit}=items[i-1];
+    for(let w=0;w<=W;w++){
+      dp[i][w] = weight<=w ? Math.max(dp[i-1][w], dp[i-1][w-weight]+profit) : dp[i-1][w];
+    }
+  }
+  let w=W; const selected=[];
+  for(let i=n;i>=1;i--){
+    if(dp[i][w]!==dp[i-1][w]){ selected.push(items[i-1]); w-=items[i-1].a; }
+  }
+  selected.reverse();
+  return {dp, maxProfit:dp[n][W], selected};
+}
+ 
+function knapsackGreedyRatio(items, W){
+  const sorted=[...items].sort((x,y)=> (y.b/y.a)-(x.b/x.a) );
+  let remaining=W, totalProfit=0; const selected=[];
+  for(const it of sorted){
+    if(it.a<=remaining){ selected.push(it); remaining-=it.a; totalProfit+=it.b; }
+  }
+  return {selected, totalProfit, used:W-remaining};
+}
+ 
+function jobSequencing(jobs){
+  const sorted=[...jobs].sort((x,y)=>y.b-x.b); // b = profit
+  const d = Math.max(1, ...jobs.map(j=>j.a)); // a = deadline
+  const slot=new Array(d).fill(null);
+  for(const job of sorted){
+    for(let t=Math.min(d,job.a)-1; t>=0; t--){
+      if(!slot[t]){ slot[t]=job; break; }
+    }
+  }
+  const totalProfit = slot.filter(Boolean).reduce((s,j)=>s+j.b,0);
+  return {slot, totalProfit};
+}
+ 
+/* =================== RENDER: KNAPSACK =================== */
+document.getElementById('runKnapsack').onclick=()=>{
+  const capacity = Number(document.getElementById('capacity').value);
+  const items = readRows(projectRows);
+  if(!items.length || capacity<1) return;
+ 
+  const t0=performance.now();
+  const {dp,maxProfit,selected}=knapsackDP(items,capacity);
+  const t1=performance.now();
+ 
+  document.getElementById('knMaxProfit').textContent=maxProfit;
+  document.getElementById('knCount').textContent=selected.length+' / '+items.length;
+  document.getElementById('knTime').textContent=(t1-t0).toFixed(3)+' ms';
+  const used = selected.reduce((s,p)=>s+p.a,0);
+  document.getElementById('knUsed').textContent=used+' / '+capacity;
+  document.getElementById('knNW').textContent=`n=${items.length}, W=${capacity}`;
+ 
+  const chips=document.getElementById('knChips');
+  chips.innerHTML='';
+  selected.forEach(p=>{
+    const c=document.createElement('span'); c.className='chip';
+    c.textContent=`${p.id} · ${p.name} (r:${p.a}, p:${p.b})`;
+    chips.appendChild(c);
+  });
+ 
+  document.getElementById('knBar').style.width=Math.min(100,(used/capacity)*100)+'%';
+  document.getElementById('knUtilText').textContent=`Resource utilization: ${used}/${capacity} used · ${capacity-used} unused`;
+ 
+  const wrap=document.getElementById('knTableWrap');
+  if(items.length<=12 && capacity<=60){
+    let html='<table class="dp-table"><tr><th>i \\ w</th>';
+    for(let w=0;w<=capacity;w++) html+=`<th>${w}</th>`;
+    html+='</tr>';
+    for(let i=0;i<=items.length;i++){
+      html+=`<tr><th>${i===0?'∅':items[i-1].id}</th>`;
+      for(let w=0;w<=capacity;w++){
+        const hit = i>0 && dp[i][w]!==dp[i-1][w] && items[i-1].a<=w;
+        html+=`<td class="${hit?'hit':''}">${dp[i][w]}</td>`;
+      }
+      html+='</tr>';
+    }
+    html+='</table>';
+    wrap.innerHTML=html;
+  } else {
+    wrap.innerHTML='<span class="hint">Table skipped for this size — see stats above. (n or W exceeds display limit.)</span>';
+  }
+};
+ 
+/* =================== RENDER: JOB SEQUENCING =================== */
+document.getElementById('runGreedy').onclick=()=>{
+  const jobs = readRows(jobRows); // a = deadline, b = profit
+  if(!jobs.length) return;
+ 
+  const t0=performance.now();
+  const {slot,totalProfit}=jobSequencing(jobs);
+  const t1=performance.now();
+ 
+  document.getElementById('grMaxProfit').textContent=totalProfit;
+  const filled = slot.filter(Boolean).length;
+  document.getElementById('grCount').textContent=filled+' / '+jobs.length;
+  document.getElementById('grTime').textContent=(t1-t0).toFixed(3)+' ms';
+  document.getElementById('grSlots').textContent=filled+' / '+slot.length;
+  document.getElementById('grND').textContent=`n=${jobs.length}, d=${slot.length}`;
+ 
+  const tl=document.getElementById('grTimeline');
+  tl.innerHTML='';
+  slot.forEach((j,i)=>{
+    const d=document.createElement('div');
+    d.className='slot '+(j?'filled':'empty');
+    d.innerHTML=`<div class="t">SLOT ${i+1}</div><div class="n">${j? j.id : '—'}</div>`;
+    tl.appendChild(d);
+  });
+ 
+  const chips=document.getElementById('grChips');
+  chips.innerHTML='';
+  slot.forEach((j,i)=>{
+    if(!j) return;
+    const c=document.createElement('span'); c.className='chip greedy';
+    c.textContent=`slot ${i+1}: ${j.id} · ${j.name} (deadline:${j.a}, profit:${j.b})`;
+    chips.appendChild(c);
+  });
+};
+ 
+/* =================== PERFORMANCE LAB =================== */
+let labChart;
+function randomItems(n, maxW, maxP){
+  return Array.from({length:n},(_,i)=>({id:'P'+(i+1), name:'Project '+(i+1), a: 1+Math.floor(Math.random()*maxW), b: 1+Math.floor(Math.random()*maxP)}));
+}
+document.getElementById('runLab').onclick=()=>{
+  const sizes=[{label:'Small (n=10)', n:10, maxW:15, maxP:50},
+               {label:'Medium (n=50)', n:50, maxW:20, maxP:80},
+               {label:'Large (n=200)', n:200, maxW:25, maxP:100}];
+  const rows=[]; const labels=[]; const dpTimes=[]; const grTimes=[];
+  sizes.forEach(cfg=>{
+    const items=randomItems(cfg.n,cfg.maxW,cfg.maxP);
+    const W = Math.floor(items.reduce((s,i)=>s+i.a,0)*0.4);
+    const t0=performance.now(); const dpRes=knapsackDP(items,W); const t1=performance.now();
+    const t2=performance.now(); const grRes=knapsackGreedyRatio(items,W); const t3=performance.now();
+    const dpT=t1-t0, grT=t3-t2;
+    const optimality = dpRes.maxProfit>0 ? ((grRes.totalProfit/dpRes.maxProfit)*100).toFixed(1)+'%' : '—';
+    rows.push({label:cfg.label, n:cfg.n, W, dpT, grT, dpP:dpRes.maxProfit, grP:grRes.totalProfit, optimality});
+    labels.push(cfg.label); dpTimes.push(dpT); grTimes.push(grT);
+  });
+ 
+  const tbody=document.querySelector('#labTable tbody');
+  tbody.innerHTML=rows.map(r=>`<tr>
+    <td>${r.label}</td><td class="num">${r.n}</td><td class="num">${r.W}</td>
+    <td class="num">${r.dpT.toFixed(3)} ms</td><td class="num">${r.dpP}</td>
+    <td class="num">${r.grT.toFixed(3)} ms</td><td class="num">${r.grP}</td>
+    <td class="num">${r.optimality}</td>
+  </tr>`).join('');
+ 
+  const ctx=document.getElementById('labChart').getContext('2d');
+  if(labChart) labChart.destroy();
+  labChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels, datasets:[
+      {label:'DP execution time (ms)', data:dpTimes, backgroundColor:'#4C8BF5'},
+      {label:'Greedy execution time (ms)', data:grTimes, backgroundColor:'#F0A93E'},
+    ]},
+    options:{
+      responsive:true,
+      plugins:{legend:{labels:{color:'#8B96AC', font:{family:'IBM Plex Mono', size:11}}}},
+      scales:{
+        x:{ticks:{color:'#8B96AC'}, grid:{color:'#1B2334'}},
+        y:{ticks:{color:'#8B96AC'}, grid:{color:'#1B2334'}, title:{display:true,text:'milliseconds',color:'#8B96AC'}}
+      }
+    }
+  });
+};
+ 
+/* =================== COUNTEREXAMPLE =================== */
+document.getElementById('runCounter').onclick=()=>{
+  const items=[{id:'A',name:'Item A',a:10,b:60},{id:'B',name:'Item B',a:20,b:100},{id:'C',name:'Item C',a:30,b:120}];
+  const W=50;
+  const dp=knapsackDP(items,W);
+  const gr=knapsackGreedyRatio(items,W);
+  const out=document.getElementById('counterOut');
+  out.innerHTML=`
+    <div class="stat-strip" style="margin-top:14px;">
+      <div class="stat"><div class="k">DP-OPTIMAL PROFIT</div><div class="v dp">${dp.maxProfit}</div></div>
+      <div class="stat"><div class="k">GREEDY (RATIO) PROFIT</div><div class="v greedy">${gr.totalProfit}</div></div>
+      <div class="stat"><div class="k">CAPACITY</div><div class="v">${W}</div></div>
+      <div class="stat"><div class="k">GAP</div><div class="v" style="color:var(--bad)">${dp.maxProfit-gr.totalProfit}</div></div>
+    </div>
+    <div class="verdict"><b>Greedy under-performs here.</b> DP selects ${dp.selected.map(i=>i.id).join(', ')} for a profit of ${dp.maxProfit}. Ratio-greedy instead picks ${gr.selected.map(i=>i.id).join(', ')} for only ${gr.totalProfit} — because the highest profit/weight item doesn't combine well with what's left of the budget. Only exhaustive/DP search guarantees the optimum for 0/1 Knapsack.</div>`;
+};
+ 
+/* =================== NAV =================== */
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelector(btn.dataset.target).scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+const io=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      document.querySelectorAll('nav.tabs button').forEach(b=>{
+        b.classList.toggle('active', b.dataset.target==='#'+e.target.id);
+      });
+    }
+  });
+},{rootMargin:'-40% 0px -50% 0px'});
+['allocation','scheduling','lab'].forEach(id=>io.observe(document.getElementById(id)));
+</script>
+</body>
+</html>
